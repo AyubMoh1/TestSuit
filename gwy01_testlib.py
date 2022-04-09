@@ -1,3 +1,6 @@
+import os
+
+
 class GwyPower:
     def __init__(self, device):
         print('Setup power control here')
@@ -9,7 +12,8 @@ class GwyPower:
         print('Power off here')
 
     def reboot(self):
-        print('Reboot here')
+        os.system("./power {device} off")
+        os.system("./power {device} on")
 
 class GwySerial:
     def __init__(self, serial_port):
