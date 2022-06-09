@@ -1,39 +1,36 @@
 import shutil
 import pytest
-import sys
 import os
-from gwy01_testlib import * 
+from flaky import flaky
+from gwy01_testlib import GwyPower, GwySerial
 
-# Run tests: pytest -q -s --gwyos gwyos123.itb --githash cafebabe123
+@flaky(max_runs = 2, min_passes = 1)
+def test_bootup():
+    
+    substring = "Running on gwy01 Revision"    
+    bootfile="/srv/tftp/gwyos.itb"
+    
+    gwyos = os.environ['GWYOSFILE']
+    githash = os.environ['GWYOSHASH']
+    print(f"\nTest if this boots: {gwyos} {githash}")
+  
+    
+    # 1 Copy file to TFTP
+    assert(os.path.isfile(gwyos))
+    shutil.copy(gwyos, bootfile)
+    assert(os.path.isfile(bootfile)) 
 
-@pytest.fixture(scope="session")
-def gwyos(pytestconfig):
-    return pytestconfig.getoption("gwyos")
-
-@pytest.fixture(scope="session")
-def githash(pytestconfig):
-    return pytestconfig.getoption("githash")
-
-def test_bootup(gwyos, githash):
-        #print(f"\nTest if this boots: {gwyos} {githash}")
-        pwr = GwyPower()
-        ser = GwySerial()
-        # 1 Copy file to TFTP
-        shutil.move("/srv/tftp/file.foo", "path/to/new/home/pi/file.foo")
-        #   Assert file exists
-        if os.path.isfile("gwy01_testlib.py"):
-            print("file exists")
-            # 2 Reboot using lib
-            pwr.reboot(gwy)
-
-                
-        
-        
-        # 3 Wait for row containing start message
-        # 3.1 If timeout, Do steps 1-3 up to 3 times. If OK continue
-        # 4. Send command to read sw_versions
-        # 5. Assert githash == sw_version's hash
-        # 6. Done
-        assert True
-
-test_bootup(2,2)
+    # 2 Reboot gwy and wait for row containing start message
+    pwr = GwyPower()
+    pwr.gwy('reboot')
+    ser = GwySerial()    
+     
+    is_found, rev_str = ser.find(substring,60)
+    assert is_found == True
+    
+    # 3 list versions and check that correct gwyos has booted
+    ser.cmd("cat /etc/sw-versions \n")
+    
+    is_found, hash_str = ser.find("gwyos [A-Z0-9a-z.-]+",5)
+    assert is_found and githash in hash_str
+    
